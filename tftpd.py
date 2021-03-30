@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import socket
-import SocketServer
+import socketserver
 import select
 
 import tftp
@@ -14,7 +14,7 @@ class Error(Exception) : pass
 
 class internal_error(Error) : pass
 
-class Nettftpd( SocketServer.BaseRequestHandler ) :
+class Nettftpd( socketserver.BaseRequestHandler ) :
 	data_sock = None
 	debugging = 2
 
@@ -29,7 +29,7 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 
 	def send( self, pkt ) :
 		if self.debugging :
-			print pkt
+			print(pkt)
 		pkt.pack()
 		self.data_sock.sendto( pkt.packet, self.client_address )
 
@@ -37,7 +37,7 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 		# if trying to get any file with a path component, slap 'em
 		# down and refuse
 		if tftppkt.filename.find( "/" ) >= 0 :
-			print "Filename \"%s\" with path component rejected." % tftppkt.filename
+			print("Filename \"%s\" with path component rejected." % tftppkt.filename)
 			errpkt = tftp.Error( tftp.ERROR_ACCESS_VIOLATION, "Ignorning filename with path." )
 			self.send( errpkt )
 			return 0
@@ -46,7 +46,7 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 
 	def filemodecheck( self, tftppkt ) :
 		if tftppkt.mode != "octet" :
-			print "Invalid file mode \"%s\"." % tftppkt.mode
+			print("Invalid file mode \"%s\"." % tftppkt.mode)
 			errpkt = tftp.Error( tftp.ERROR_ILLEGAL_TFTP_OP, "Only octet mode is supported." )
 			self.send( errpkt )
 			return 0
@@ -81,8 +81,8 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 				file.open( tftppkt.filename, "wb" )
 			else :
 				file = open( tftppkt.filename, "wb" )
-		except IOError, err :
-			print "Failed to open %s : " % tftppkt.filename, err
+		except IOError as err :
+			print("Failed to open %s : " % tftppkt.filename, err)
 			errpkt = tftp.Error( tftp.ERROR_NO_SUCH_FILE, err.strerror )
 			self.send( errpkt )
 			self.data_sock.close()
@@ -102,14 +102,14 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 				(buffer,addr) = self.data_sock.recvfrom(1024)
 				try :
 					datapkt = tftp.parse( buffer )
-				except tftp.packet_error,err :
+				except tftp.packet_error as err :
 					# ignore bad packets
-					print "Ignoring bad packet from peer:",err.errmsg
+					print("Ignoring bad packet from peer:",err.errmsg)
 				else :
 					if datapkt.op != tftp.DATA:
-						print "Bad packet from peer (expected DATA)."
+						print("Bad packet from peer (expected DATA).")
 					elif datapkt.block_num != next_block_num :
-						print "Bad DATA from peer; got block=%d expected block=%d." % (datapkt.block_num,next_block_num)
+						print("Bad DATA from peer; got block=%d expected block=%d." % (datapkt.block_num,next_block_num))
 					else :
 						# success! 
 						file.write( datapkt.data )
@@ -125,12 +125,12 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 							last = 1
 				
 			else :
-				print "No response from peer; resending ACK."
+				print("No response from peer; resending ACK.")
 				self.send( ackpkt )
 				retry_count += 1
 
 		if retry_count >= data_retry_max :
-			print "Too many retries.  Giving up."
+			print("Too many retries.  Giving up.")
 
 		self.data_sock.close()
 		file.close()
@@ -143,7 +143,7 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 		self.data_sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
 		self.data_sock.bind( ("",0) )
 
-		print self.data_sock.getsockname()
+		print(self.data_sock.getsockname())
 
 		if not self.pathcheck( tftppkt ) :
 			self.data_sock.close()
@@ -160,8 +160,8 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 			else :
 				file = open( tftppkt.filename, "rb" )
 
-		except IOError, err :
-			print "Failed to open %s : " % tftppkt.filename, err
+		except IOError as err :
+			print("Failed to open %s : " % tftppkt.filename, err)
 			errpkt = tftp.Error( tftp.ERROR_NO_SUCH_FILE, err.strerror )
 			self.send( errpkt )
 			self.data_sock.close()
@@ -191,22 +191,22 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 						ackpkt = tftp.parse( buffer )
 
 						if ackpkt.op != tftp.ACK :
-							print "Bad packet from peer (expected ACK)."
+							print("Bad packet from peer (expected ACK).")
 						elif ackpkt.block_num != datapkt.block_num :
-							print "Bad ACK from peer; got block=%d expected block=%d." % (ackpkt.block_num,datapkt.block_num)
+							print("Bad ACK from peer; got block=%d expected block=%d." % (ackpkt.block_num,datapkt.block_num))
 						else :
 							# success! leave the ACK retry loop
 							break
-					except tftp.packet_error,err :
+					except tftp.packet_error as err :
 						# ignore bad packets
-						print "Ignoring bad packet from peer:",err.errmsg
+						print("Ignoring bad packet from peer:",err.errmsg)
 				else :
-					print "No response from peer; resending DATA."
+					print("No response from peer; resending DATA.")
 					self.send( datapkt )
 					retry_count += 1
 
 			if retry_count >= data_retry_max :
-				print "Too many retries.  Giving up."
+				print("Too many retries.  Giving up.")
 
 				# leave outer transmit loop
 				last = 1
@@ -217,35 +217,35 @@ class Nettftpd( SocketServer.BaseRequestHandler ) :
 	def serveit( self ) :
 		try :
 			pkt = tftp.parse( self.request[0] )
-		except tftp.packet_error,err :
-			print err.errmsg
+		except tftp.packet_error as err :
+			print(err.errmsg)
 		else :
 			if pkt.op == tftp.RRQ :
 				self.read_request( pkt )
 			elif pkt.op == tftp.WRQ :
 				self.write_request( pkt )
 			else :
-				print "Ignoring unexpected op."
+				print("Ignoring unexpected op.")
 
 	def handle( self ) :
-		print "client_address=",self.client_address
+		print("client_address=",self.client_address)
 		self.serveit()
-		print "handle() done"
+		print("handle() done")
 
-class ReuseUDPServer(SocketServer.UDPServer):
+class ReuseUDPServer(socketserver.UDPServer):
 
 	def server_bind(self) :
-		print "ReuseUDPServer.server_bind()"
+		print("ReuseUDPServer.server_bind()")
 		self.allow_reuse_address = 1
-		SocketServer.UDPServer.server_bind(self)
+		socketserver.UDPServer.server_bind(self)
 
 	def server_activate(self) :
-		print "ReuseUDPServer.server_activate()"
-		SocketServer.UDPServer.server_activate(self)
+		print("ReuseUDPServer.server_activate()")
+		socketserver.UDPServer.server_activate(self)
 
 	def close_request(self,request) :
-		print "ReuseUDPServer.close_request()"
-		SocketServer.UDPServer.close_request(self,request)
+		print("ReuseUDPServer.close_request()")
+		socketserver.UDPServer.close_request(self,request)
 
 tftp.debugging = 1
 
